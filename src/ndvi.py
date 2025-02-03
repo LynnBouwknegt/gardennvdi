@@ -2,6 +2,9 @@ import geopandas as gpd
 
 from src.api.kadaaster_api import get_kadaster_data
 from src.api.bgt_api import get_bgt_data
+from rasterio.mask import mask
+import pandas as pd
+import numpy as np
 
 from shapely.geometry import box
 
@@ -58,3 +61,54 @@ def get_yard_data(bounds, cutoff=0.05):
                                 .drop_duplicates(subset="gml_id").dropna(subset=['id'])
     processed_gml = processed_gml[processed_gml["overlap_percentage"] > cutoff]
     return processed_gml
+
+def process_image(processed_yard_data, aeriel_rgb, aeriel_cir):
+    """
+    Calculate the NDVI and its mean for the aeriel images.
+    Make sure that the bounds of the processed_yard_data are the same bounds as of the aeriel images.    
+
+    Parameters
+    ----------
+    processed_yard_data : geopandas.GeoDataFrame
+        The processed yard data with the geometry of the erf zones.
+        Obtained from the get_yard_data function.
+    aeriel_rgb : rasterio.io.DatasetReader
+        The aeriel image in RGB format.
+    aeriel_cir : rasterio.io.DatasetReader  
+        The aeriel image in CIR format.
+    
+    Returns
+    -------
+    df : pandas.DataFrame
+        A DataFrame with the yards NDVI and its mean for each erf zone.
+
+    """
+        # Create a list to store results
+    plot_dict = {}
+
+    # Iterate over each erf zone
+    for _, row in processed_yard_data.iterrows():
+        erf_id = row['id']
+        plot_id = row['gml_id']
+        zone_geometry = [row['geometry']]
+        try:
+            mask_image_cir, out_transform_cir = mask(aeriel_cir, zone_geometry, crop=True, filled=False)
+            mask_image_rgb, _ = mask(aeriel_rgb, zone_geometry, crop=True, filled=False)
+            # Store results (zone_id and clipped raster)
+            plot_dict[plot_id] = {
+                'erf_id': erf_id,
+                "clipped_cir": mask_image_cir,
+                "clipped_rgb": mask_image_rgb,
+                "affine_transform": out_transform_cir
+            }
+        except ValueError:
+            pass
+
+    df = pd.DataFrame(plot_dict).T
+    # apply the NDVI to df 
+    df['ndvi'] = df.apply(lambda x: calculate_ndvi(x['clipped_cir']), axis=1)
+
+    # Calculate the ndvi mean over unmasked pixels
+    df['ndvi_mean'] = df['ndvi'].apply(lambda x: np.ma.mean(x))
+
+    return df
