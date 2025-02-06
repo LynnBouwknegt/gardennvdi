@@ -85,6 +85,9 @@ def process_image(processed_yard_data, aeriel_rgb, aeriel_cir):
     """
         # Create a list to store results
     plot_dict = {}
+    transform = aeriel_rgb.transform
+    resolution_x, resolution_y = transform[0], -transform[4]
+    pixel_area = resolution_x * resolution_y
 
     # Iterate over each erf zone
     for _, row in processed_yard_data.iterrows():
@@ -99,7 +102,8 @@ def process_image(processed_yard_data, aeriel_rgb, aeriel_cir):
                 'erf_id': erf_id,
                 "clipped_cir": mask_image_cir,
                 "clipped_rgb": mask_image_rgb,
-                "affine_transform": out_transform_cir
+                "affine_transform": out_transform_cir,
+                "area" : np.ma.count(mask_image_cir[0]) * pixel_area
             }
         except ValueError:
             pass
