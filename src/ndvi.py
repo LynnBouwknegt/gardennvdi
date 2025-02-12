@@ -1,7 +1,7 @@
 import geopandas as gpd
 
 from src.api.kadaaster_api import get_kadaster_data
-from src.api.bgt_api import get_bgt_data
+from src.api.bgt_api import get_bgt_data, get_bgt_download_link, download_and_unzip_file, find_gml_file
 from rasterio.mask import mask
 import pandas as pd
 import numpy as np
@@ -45,7 +45,14 @@ def get_yard_data(bounds, cutoff=0.05):
     """
     bbox_polygon = box(*bounds)
     gml_kadaster = get_kadaster_data(bounds)
-    erf_zones = get_bgt_data(bounds)
+
+    # get BGT data
+    download_link = get_bgt_download_link(bounds)
+    extract_path = download_and_unzip_file(download_link, output_zip="bgt_data.zip", extract_dir="bgt_data")
+    gml_file = find_gml_file(extract_path)
+    erf_zones = gpd.read_file(gml_file)
+    erf_zones = erf_zones.rename(columns={'gml_id': 'id'})
+
     assert erf_zones.crs == gml_kadaster.crs
     # filter the gml data to the bounds of the erf zones
     gml_kadaster = gml_kadaster.cx[bounds[0]:bounds[2], bounds[1]:bounds[3]]
