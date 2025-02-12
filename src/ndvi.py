@@ -69,7 +69,7 @@ def get_yard_data(bounds, cutoff=0.05):
     processed_gml = processed_gml[processed_gml["overlap_percentage"] > cutoff]
     return processed_gml
 
-def process_image(processed_yard_data, aeriel_rgb, aeriel_cir):
+def process_image(processed_yard_data, aeriel_cir, aeriel_rgb=None):
     """
     Calculate the NDVI and its mean for the aeriel images.
     Make sure that the bounds of the processed_yard_data are the same bounds as of the aeriel images.    
@@ -92,7 +92,7 @@ def process_image(processed_yard_data, aeriel_rgb, aeriel_cir):
     """
         # Create a list to store results
     plot_dict = {}
-    transform = aeriel_rgb.transform
+    transform = aeriel_cir.transform
     resolution_x, resolution_y = transform[0], -transform[4]
     pixel_area = resolution_x * resolution_y
 
@@ -103,15 +103,23 @@ def process_image(processed_yard_data, aeriel_rgb, aeriel_cir):
         zone_geometry = [row['geometry']]
         try:
             mask_image_cir, out_transform_cir = mask(aeriel_cir, zone_geometry, crop=True, filled=False)
-            mask_image_rgb, _ = mask(aeriel_rgb, zone_geometry, crop=True, filled=False)
+            if aeriel_rgb is not None:
+                mask_image_rgb, _ = mask(aeriel_rgb, zone_geometry, crop=True, filled=False)
+                plot_dict[plot_id] = {
+                    'erf_id': erf_id,
+                    "clipped_cir": mask_image_cir,
+                    "clipped_rgb": mask_image_rgb,
+                    "affine_transform": out_transform_cir,
+                    "area" : np.ma.count(mask_image_cir[0]) * pixel_area
+                }
             # Store results (zone_id and clipped raster)
-            plot_dict[plot_id] = {
-                'erf_id': erf_id,
-                "clipped_cir": mask_image_cir,
-                "clipped_rgb": mask_image_rgb,
-                "affine_transform": out_transform_cir,
-                "area" : np.ma.count(mask_image_cir[0]) * pixel_area
-            }
+            else:
+                plot_dict[plot_id] = {
+                    'erf_id': erf_id,
+                    "clipped_cir": mask_image_cir,
+                    "affine_transform": out_transform_cir,
+                    "area" : np.ma.count(mask_image_cir[0]) * pixel_area
+                }
         except ValueError:
             pass
 
