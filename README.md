@@ -43,6 +43,87 @@ Follow these steps to install **Pixi** on Windows:
     pixi install
     ```
 
+## Instructions on GDAL with ECW (Linux, optional)
+
+### Prerequisites
+
+Your system must contain the libraries described by [GDAL build requirements](https://gdal.org/en/stable/development/building_from_source.html#build-requirements).
+Install these via `sudo apt-get install <packagename>`.
+
+### Install ECW SDK
+
+To read ECW files, we need to compile the ECW-compatible GDAL version.
+For that, you need to request the read-only ECW SDK from Hexagon Geospatial:
+
+https://supportsi.hexagon.com/s/article/ERDAS-ECW-JP2-SDK-Read-Only-Redistributable-Request
+
+Download the zip file, extract it and run the binary setup:
+
+```sh
+chmod +x *.zip && 
+unzip *.zip && 
+chmod +x ./ECWJP2SDKSetup*.bin && 
+./ECWJP2SDKSetup*.bin
+```
+
+Type 1, read and accept the license agreement, and type `yes` to install the SDK. 
+In the terminal output, note down the installation path, as we will need it later.
+It will likely be something like `/home/<username>/hexagon/ERDAS-ECW_JPEG_2000_SDK-5.5.0/Desktop_Read-Only` where `<username>` is your username.
+Export the noted down path into a variable:
+
+```bash
+export ECW_ROOT=/home/<username>/hexagon/ERDAS-ECW_JPEG_2000_SDK-5.5.0/Desktop_Read-Only
+```
+
+In addition, note down the directory where your repository is into the following variable:
+
+```bash
+export PIXI_PROJECT_ROOT=/home/<username>/gardenndvi
+```
+
+where the exact location will depend on the user system.
+
+### Install GDAL
+
+Now we need to compile the GDAL library with ECW support.
+We will use version 3.10.2, but you can check and use the latest version from the GDAL website.
+Make a new directory **outside** the git repository and run the following commands in there:
+
+```bash
+wget https://github.com/OSGeo/gdal/releases/download/v3.10.2/gdal-3.10.2.tar.gz &&
+mkdir -p gdal &&
+tar zxvf gdal-3.10.2.tar.gz --strip-components=1 -C gdal
+```
+
+Then go into the repository and build it:
+
+```bash
+cd gdal && 
+mkdir -p build &&
+cd build &&
+cmake .. \
+  -DGDAL_ENABLE_DRIVER_ECW=ON \
+  -DECW_ROOT="$ECW_ROOT" \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="$PIXI_PROJECT_ROOT/.pixi/envs/default" \
+  -DCMAKE_INSTALL_RPATH="$ECW_ROOT/lib/cpp11abi/x64/release" \
+  -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+  -DCMAKE_IGNORE_PATH="$PIXI_PROJECT_ROOT/.pixi/envs/default"
+```
+
+After that, run the following command:
+
+```bash
+cmake --build .
+```
+
+That will take a while. 
+Once its done, run:
+
+```bash
+cmake --build . --target install
+```
+
 ## Project Structure
 
 The project is structured as follows:
