@@ -78,8 +78,8 @@ def kadaaster_link(bbox, features=["perceel"]):
                 print("Processing failed.")
                 return None
             else:
-                print(f"Status: {status}. Waiting...")
-                time.sleep(5)  # Wait for 5 seconds before checking again
+                print(f"Status: {status}. Download progress: {status_data.get('progress')}%. Waiting...")
+                time.sleep(10)  # Wait for 5 seconds before checking again
 
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")
